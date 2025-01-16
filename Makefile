@@ -1,16 +1,17 @@
 SHELL := /bin/bash
 
 export DISABLE_VENV ?= 0
+export DISABLE_LOCAL_OLLAMA ?= 0
 
 .PHONY: help
 help:
 	@echo "Available commands:"
-	@echo " make install (recommended)   - Automatic setup for local or Docker"
-	@echo " make run      - Start the local application server"
-	@echo " run-docker                  - Run Docker containers with CPU support"
-	@echo " run-docker-gpu              - Run Docker containers with GPU support"
-	@echo " clean                       - Clean the project environment"
-	@echo " clear-cache                 - Clear application cache"
+	@echo " make install (recommended)       - Automatic setup for local or Docker"
+	@echo " make run      					 - Start the local application server"
+	@echo " make run-docker                  - Run Docker containers with CPU support"
+	@echo " make run-docker-gpu              - Run Docker containers with GPU support"
+	@echo " make clean                       - Clean the project environment"
+	@echo " make clear-cache                 - Clear application cache"
 
 .PHONY: install
 install:
@@ -33,8 +34,9 @@ install:
 
 .PHONY: setup-local
 setup-local:
+	@rm -f .pyproject.hash
 	@if [ ! -f .env ]; then \
-		printf  "\n\e[1;34m Copy .env.localhost to .env \e[0m"; \
+		printf  "\n\e[1;34m Copy .env.localhost.example to .env.localhost \e[0m"; \
 	  	cp .env.localhost.example .env.localhost; \
 	fi
 	@while true; do \
@@ -80,10 +82,15 @@ install-requirements:
 .PHONY: run
 run:
 	@echo "Starting the local application server..."; \
-	DISABLE_VENV=${DISABLE_VENV:-0} ./run.sh
+	DISABLE_VENV=$(DISABLE_VENV) DISABLE_LOCAL_OLLAMA=$(DISABLE_LOCAL_OLLAMA) ./run.sh
 
 .PHONY: setup-docker
 setup-docker:
+	@rm -f .pyproject.hash
+	@if [ ! -f .env ]; then \
+		printf  "\n\e[1;34m Copy .env.example to .env \e[0m"; \
+	  	cp .env.example .env; \
+	fi
 	@echo -e "\033[1;34m   Available Docker options:\033[0m"; \
 	echo -e "\033[1;33m     1:\033[0m Run Docker containers with CPU support"; \
 	echo -e "\033[1;33m     2:\033[0m Run Docker containers with GPU support"; \
@@ -96,13 +103,13 @@ setup-docker:
 
 .PHONY: run-docker
 run-docker:
-	@echo -e "\033[1;34m   Starting Docker container with CPU support...\033[0m"; \
-	docker-compose up --build
+	@echo -e "\033[1;34m   Starting Docker container with CPU support...\033[0m";
+	@docker-compose -f docker-compose.yml up --build
 
 .PHONY: run-docker-gpu
 run-docker-gpu:
-	@echo -e "\033[1;34m   Starting Docker container with GPU support...\033[0m"; \
-	docker-compose -f docker-compose.gpu.yml up --build
+	@echo -e "\033[1;34m   Starting Docker container with GPU support...\033[0m";
+	@docker-compose -f docker-compose.gpu.yml -p text-extract-api-gpu up --build
 
 .PHONY: clean
 clean:
@@ -113,4 +120,4 @@ clean:
 .PHONY: clean-python-cache
 clean-cache:
 	find . -type d -name '__pycache__' -exec rm -rf {} + && find . -type f -name '*.pyc' -delete
-:
+

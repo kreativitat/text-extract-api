@@ -45,18 +45,54 @@ Before running the example see [getting started](#getting-started)
 
 You might want to run the app directly on your machine for development purposes OR to use for example Apple GPUs (which are not supported by Docker at the moment).
 
+### Prerequisites
+
 To have it up and running please execute the following steps:
 
 [Download and install Ollama](https://ollama.com/download)
 [Download and install Docker](https://www.docker.com/products/docker-desktop/)
 
-Be default application create [virtual python env](https://docs.python.org/3/library/venv.html): `.venv`. You can disable this functionality by adding `DISABLE_VENV=1` before running script:
+
+> ### Setting Up Ollama on a Remote Host
+> 
+> To connect to an external Ollama instance, set the environment variable: `OLLAMA_HOST=http://address:port`, e.g.:
+> ```bash
+> OLLAMA_HOST=http(s)://127.0.0.1:5000
+> ```
+> 
+> If you want to disable the local Ollama model, use env `DISABLE_LOCAL_OLLAMA=1`, e.g.
+> ```bash
+> DISABLE_LOCAL_OLLAMA=1 make install
+> ```
+> **Note**: When local Ollama is disabled, ensure the required model is downloaded on the external instance.  
+> 
+> Currently, the `DISABLE_LOCAL_OLLAMA` variable cannot be used to disable Ollama in Docker. As a workaround, remove the `ollama` service from `docker-compose.yml` or `docker-compose.gpu.yml`.  
+>
+> Support for using the variable in Docker environments will be added in a future release.
+
+
+### Clone the Repository
+
+First, clone the repository and change current directory to it:
+
+```sh
+git clone https://github.com/CatchTheTornado/text-extract-api.git
+cd text-extract-api
+```
+
+### Setup with `Makefile`
+
+Be default application create [virtual python env](https://docs.python.org/3/library/venv.html): `.venv`. You can disable this functionality on local setup by adding `DISABLE_VENV=1` before running script:
+
 ```bash
 DISABLE_VENV=1 make install 
 ```
+
 ```bash
 DISABLE_VENV=1 make run 
 ```
+
+### Manual setup
 
 Configure environment variables:
 
@@ -67,11 +103,24 @@ cp .env.localhost.example .env.localhost
 You might want to just use the defaults - should be fine. After ENV variables are set, just execute:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
 chmod +x run.sh
 run.sh
 ```
 
 This command will install all the dependencies - including Redis (via Docker, so it is not entirely docker free method of running `text-extract-api` anyways :)
+
+(MAC) - Dependencies
+```
+brew update && brew install libmagic tesseract poppler pkg-config ghostscript ffmpeg automake autoconf
+```
+
+(Mac) - You need to startup the celery worker
+```
+source .venv/bin/activate && celery -A text_extract_api.celery_app worker --loglevel=info --pool=solo
+```
 
 Then you're good to go with running some CLI commands like:
 
@@ -79,9 +128,9 @@ Then you're good to go with running some CLI commands like:
 python client/cli.py ocr_upload --file examples/example-mri.pdf --ocr_cache --prompt_file=examples/example-mri-remove-pii.txt
 ```
 
-### Scalling the parallell processing
+### Scaling the parallell processing
 
-To have multiple tasks runing at once - for concurrent processing please run the following command to start single worker process:
+To have multiple tasks running at once - for concurrent processing please run the following command to start single worker process:
 
 ```bash
 celery -A text_extract_api.tasks worker --loglevel=info --pool=solo & # to scale by concurrent processing please run this line as many times as many concurrent processess you want to have running
@@ -98,7 +147,7 @@ Open in the browser: <a href="https://demo.doctractor.com/">demo.doctractor.com<
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
 export OCR_UPLOAD_URL=https://doctractor:Aekie2ao@api.doctractor.com/ocr/upload
 export RESULT_URL=https://doctractor:Aekie2ao@api.doctractor.com/ocr/result/
 
@@ -110,6 +159,10 @@ python client/cli.py ocr_upload --file examples/example-mri.pdf --ocr_cache --pr
 **Note:** In the free demo we don't guarantee any processing times. The API is Open so please do **not send any secret documents neither any documents containing personal information**, If you do - you're doing it on your own risk and responsiblity.
 
 <img src="screenshots/demo.png" alt="Demo screenshot" />
+
+## Join us on Discord
+
+In case of any questions, help requests or just feedback - please [join us on Discord](https://discord.gg/NJzu47Ye3a)!
 
 ## Getting started with Docker
 
@@ -125,7 +178,11 @@ git clone https://github.com/CatchTheTornado/text-extract-api.git
 cd text-extract-api
 ```
 
-### Setup environmental variables
+### Using `Makefile`
+You can use the `make install` and `make run` command to setup the Docker environment for `text-extract-api`. You can find the manual steps required to do so described below.
+
+
+### Manual setup
 
 Create `.env` file in the root directory and set the necessary environment variables. You can use the `.env.example` file as a template:
 
@@ -146,7 +203,7 @@ Then modify the variables inside the file:
 ```bash
 #APP_ENV=production # sets the app into prod mode, otherwise dev mode with auto-reload on code changes
 REDIS_CACHE_URL=redis://localhost:6379/1
-STORAGE_PROFILE_PATH=/storage_profiles
+STORAGE_PROFILE_PATH=./storage_profiles
 LLAMA_VISION_PROMPT="You are OCR. Convert image to markdown."
 
 # CLI settings
@@ -178,7 +235,7 @@ docker-compose up --build
 ... for GPU support run:
 
 ```bash
-docker-compose -f docker-compose.gpu.yml up --build
+docker-compose -f docker-compose.gpu.yml -p text-extract-api-gpu up --build
 ```
 
 **Note:** While on Mac - Docker does not support Apple GPUs. In this case you might want to run the application natively without the Docker Compose please check [how to run it natively with GPU support](#getting-started)
@@ -202,7 +259,7 @@ If the on-prem is too much hassle [ask us about the hosted/cloud edition](mailto
 python3 -m venv .venv
 source .venv/bin/activate
 # now you've got access to `python` and `pip` within your virutal env.
-pip install -r requirements.txt # install main project requirements
+pip install -e . # install main project requirements
 ```
 
 
@@ -210,7 +267,7 @@ The project includes a CLI for interacting with the API. To make it work first r
 
 ```bash
 cd client
-pip install -r requirements.txt
+pip install -e .
 ```
 
 
@@ -259,7 +316,7 @@ python client/cli.py ocr_upload --file examples/example-mri.pdf --ocr_cache --pr
 ```
 
 The `ocr` command can store the results using the `storage_profiles`:
-  - **storage_profile**: Used to save the result - the `default` profile (`/storage_profiles/default.yaml`) is used by default; if empty file is not saved
+  - **storage_profile**: Used to save the result - the `default` profile (`./storage_profiles/default.yaml`) is used by default; if empty file is not saved
   - **storage_filename**: Outputting filename - relative path of the `root_path` set in the storage profile - by default a relative path to `/storage` folder; can use placeholders for dynamic formatting: `{file_name}`, `{file_extension}`, `{Y}`, `{mm}`, `{dd}` - for date formatting, `{HH}`, `{MM}`, `{SS}` - for time formatting
 
 
@@ -357,7 +414,7 @@ apiClient.uploadFile(formData).then(response => {
   - **ocr_cache**: Whether to cache the OCR result (true or false).
   - **prompt**: When provided, will be used for Ollama processing the OCR result
   - **model**: When provided along with the prompt - this model will be used for LLM processing
-  - **storage_profile**: Used to save the result - the `default` profile (`/storage_profiles/default.yaml`) is used by default; if empty file is not saved
+  - **storage_profile**: Used to save the result - the `default` profile (`./storage_profiles/default.yaml`) is used by default; if empty file is not saved
   - **storage_filename**: Outputting filename - relative path of the `root_path` set in the storage profile - by default a relative path to `/storage` folder; can use placeholders for dynamic formatting: `{file_name}`, `{file_extension}`, `{Y}`, `{mm}`, `{dd}` - for date formatting, `{HH}`, `{MM}`, `{SS}` - for time formatting
 
 Example:

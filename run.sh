@@ -1,6 +1,9 @@
 #!/bin/bash
 
+echo "$DISABLE_LOCAL_OLLAMA"
+
 DISABLE_VENV="${DISABLE_VENV:-0}"
+DISABLE_LOCAL_OLLAMA="${DISABLE_LOCAL_OLLAMA:-0}"
 
 RED='\033[0;31m'
 CYAN='\033[0;36m'
@@ -12,16 +15,6 @@ else
     echo "  .venv enabled"
     python3 -m venv .venv
     source .venv/bin/activate
-fi
-
-echo "Installing requirements..."
-if ! pip install -r requirements.txt 2>logs/init.log; then
-    echo "Failed to install dependencies from requirements.txt."
-    echo -e "Error log: $RED"
-    cat logs/init.log
-    echo -e "$RESET Please check the file and consider manually removing and recreating .venv if needed:"
-    echo -e "$CYAN    rm -rf .venv && python3 -m venv .venv && source .venv/bin/activate $RESET"
-    exit 1
 fi
 
 echo "Installing current package..."
@@ -36,18 +29,23 @@ fi
 
 if [ ! -f .env.localhost ]; then
   cp .env.localhost.example .env.localhost
-fi 
+fi
 
 set -a; source .env.localhost; set +a
 
-echo "Starting Ollama Server"
-ollama serve &
+if [ "$DISABLE_LOCAL_OLLAMA" -eq 1 ]; then
+  echo "Local Ollama disabled by env \`DISABLE_LOCAL_OLLAMA=$DISABLE_LOCAL_OLLAMA\`"
+  echo "External Ollama should be listening on OLLAMA_HOST=$OLLAMA_HOST"
+else
+  echo "Starting Ollama Server"
+  ollama serve &
 
-echo "Pulling LLama3.1 model"
-ollama pull llama3.1
+  echo "Pulling LLama3.1 model"
+  ollama pull llama3.1
 
-echo "Pulling LLama3.2-vision model"
-ollama pull llama3.2-vision
+  echo "Pulling LLama3.2-vision model"
+  ollama pull llama3.2-vision
+fi
 
 echo "Starting Redis"
 
@@ -55,7 +53,7 @@ echo "Your ENV settings loaded from .env.localhost file: "
 printenv
 
 echo "Downloading models"
-#python -c 'from marker.models import load_all_models; load_all_models()'
+python -c 'from marker.models import load_all_models; load_all_models()'
 
 CELERY_BIN="$(pwd)/.venv/bin/celery"
 CELERY_PID=$(pgrep -f "$CELERY_BIN")

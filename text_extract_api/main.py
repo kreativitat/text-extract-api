@@ -1,37 +1,40 @@
+import os
 import pathlib
 import sys
 import time
-from hashlib import md5
-import redis
-import os
-from fastapi import FastAPI, Form, UploadFile, File, HTTPException
-from celery.result import AsyncResult
-from pydantic import BaseModel, Field, field_validator
-import ollama
-import base64
 from typing import Optional
 
-from text_extract_api.files.file_formats.file_format import FileFormat
-from text_extract_api.files.storage_manager import StorageManager
+import ollama
+import redis
+from celery.result import AsyncResult
+from fastapi import FastAPI, Form, UploadFile, File, HTTPException
+from pydantic import BaseModel, Field, field_validator
+
 from text_extract_api.celery_app import app as celery_app
+from text_extract_api.extract.strategies.strategy import Strategy
 from text_extract_api.extract.tasks import ocr_task
-from text_extract_api.extract.ocr_strategies.ocr_strategy import OCRStrategy
+from text_extract_api.files.file_formats.file_format import FileFormat, FileField
+from text_extract_api.files.storage_manager import StorageManager
 
 # Define base path as text_extract_api - required for keeping absolute namespaces
 sys.path.insert(0, str(pathlib.Path(__file__).parent.resolve()))
 
+
 def storage_profile_exists(profile_name: str) -> bool:
-    profile_path = os.path.abspath(os.path.join(os.getenv('STORAGE_PROFILE_PATH', '/storage_profiles'), f'{profile_name}.yaml'))
+    profile_path = os.path.abspath(
+        os.path.join(os.getenv('STORAGE_PROFILE_PATH', './storage_profiles'), f'{profile_name}.yaml'))
     if not os.path.isfile(profile_path) and profile_path.startswith('..'):
         # backward compability for ../storage_manager in .env
         sub_profile_path = os.path.normpath(os.path.join('.', profile_path))
         return os.path.isfile(sub_profile_path)
     return True
 
+
 app = FastAPI()
 # Connect to Redis
 redis_url = os.getenv('REDIS_CACHE_URL', 'redis://redis:6379/1')
 redis_client = redis.StrictRedis.from_url(redis_url)
+
 
 @app.post("/ocr")
 async def ocr_endpoint(
@@ -62,7 +65,8 @@ async def ocr_endpoint(
 
     # Asynchronous processing using Celery
     task = ocr_task.apply_async(
-        args=[file_format.binary, strategy, file_format.filename, file_format.hash, ocr_cache, prompt, model, storage_profile,
+        args=[file_format.binary, strategy, file_format.filename, file_format.hash, ocr_cache, prompt, model,
+              storage_profile,
               storage_filename])
     return {"task_id": task.id}
 
@@ -98,24 +102,14 @@ class OcrRequest(BaseModel):
     strategy: str = Field(..., description="OCR strategy to use")
     prompt: Optional[str] = Field(None, description="Prompt for the Ollama model")
     model: str = Field(..., description="Model to use for the Ollama endpoint")
-    file: str = Field(..., description="Base64 encoded document file")
+    file: FileField = Field(..., description="Base64 encoded document file")
     ocr_cache: bool = Field(..., description="Enable OCR result caching")
     storage_profile: Optional[str] = Field('default', description="Storage profile to use")
     storage_filename: Optional[str] = Field(None, description="Storage filename to use")
 
     @field_validator('strategy')
     def validate_strategy(cls, v):
-        OCRStrategy.get_strategy(v)
-        return v
-
-    @field_validator('file')
-    def validate_file(cls, v):
-        try:
-            file_content = base64.b64decode(v)
-            if not file_content.startswith(b'%PDF'):
-                raise ValueError("Invalid file type. Only PDFs are supported.")
-        except Exception:
-            return v  # @TODO tmp
+        Strategy.get_strategy(v)
         return v
 
     @field_validator('storage_profile')
@@ -135,7 +129,7 @@ class OcrFormRequest(BaseModel):
 
     @field_validator('strategy')
     def validate_strategy(cls, v):
-        OCRStrategy.get_strategy(v)
+        Strategy.get_strategy(v)
         return v
 
     @field_validator('storage_profile')

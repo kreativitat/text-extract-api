@@ -3,6 +3,8 @@ import base64
 import requests
 import time
 import os
+import math
+from ollama import pull
 
 def ocr_upload(file_path, ocr_cache, prompt, prompt_file=None, model='llama3.1', strategy='llama_vision', storage_profile='default', storage_filename=None):
     ocr_url = os.getenv('OCR_UPLOAD_URL', 'http://localhost:8000/ocr/upload')
@@ -114,13 +116,13 @@ def clear_cache():
     else:
         print(f"Failed to clear OCR cache: {response.text}")
 
-def llm_pull(model = 'llama3.1'):
-    ollama_pull_url = os.getenv('LLM_PULL_API_URL', 'http://localhost:8000/llm/pull')
-    response = requests.post(ollama_pull_url, json={"model": model})
-    if response.status_code == 200:
-        print("Model pulled successfully.")
-    else:
-        print(f"Failed to pull the model: {response.text}")
+def llm_pull(model = 'llama3.1'):   
+    response = pull(model, stream=True)
+    for chunk in response:
+      if chunk.completed and chunk.total:
+        print(f'Please wait .... {model} - {chunk.status} - {math.floor((chunk.completed / chunk.total) * 100)}% completed')
+      else:
+        print(f'Pulling {model} - {chunk.status}')    
 
 def llm_generate(prompt, model = 'llama3.1'):
     ollama_url = os.getenv('LLM_GENERATE_API_URL', 'http://localhost:8000/llm/generate')

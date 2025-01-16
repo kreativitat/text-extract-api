@@ -2,12 +2,12 @@ import cv2
 import numpy as np
 import pytesseract
 
-from text_extract_api.extract.ocr_strategies.ocr_strategy import OCRStrategy
+from text_extract_api.extract.strategies.strategy import Strategy
 from text_extract_api.files.file_formats.file_format import FileFormat
-from text_extract_api.files.file_formats.image_file_format import ImageFileFormat
+from text_extract_api.files.file_formats.image import ImageFileFormat
 
 
-class TesseractOCRStrategy(OCRStrategy):
+class TesseractStrategy(Strategy):
 
     @classmethod
     def name(cls) -> str:

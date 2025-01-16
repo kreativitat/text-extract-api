@@ -1,24 +1,20 @@
 services:
-  web:
-    build: text_extract_api
-    container_name: fastapi_app
-    command: >
-      bash -c "
-      if [ \"$APP_ENV\" = 'production' ]; then 
-        uvicorn main:app --host 0.0.0.0 --port 8000;
-      else 
-        uvicorn main:app --host 0.0.0.0 --port 8000 --reload;  
-      fi"
+  fastapi_app:
+    build:
+      context: . # Keep the build context as the root directory
+      dockerfile: dev.Dockerfile
+    entrypoint: /app/scripts/entrypoint.sh
     ports:
       - "8000:8000"
     environment:
+      - APP_TYPE=fastapi
       - CELERY_BROKER_URL=${CELERY_BROKER_URL-redis://redis:6379/0}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND-redis://redis:6379/0}
       - LLM_PULL_API_URL=${LLM_PULL_API_URL-http://web:8000/llm_pull}
       - LLM_GENEREATE_API_URL=${LLM_GENEREATE_API_URL-http://web:8000/llm_generate}
       - OLLAMA_HOST=${OLLAMA_HOST-http://ollama:11434}
       - APP_ENV=${APP_ENV-development}  # Default to development mode
-      - STORAGE_PROFILE_PATH=${STORAGE_PROFILE_PATH-/storage_profiles}  # Add the storage profile path
+      - STORAGE_PROFILE_PATH=${STORAGE_PROFILE_PATH-/app/storage_profiles}  # Add the storage profile path
       - LIST_FILES_URL=${LIST_FILES_URL-http://localhost:8000/storage/list}
       - LOAD_FILE_URL=${LOAD_FILE_URL-http://localhost:8000/storage/load}
       - DELETE_FILE_URL=${DELETE_FILE_URL-http://localhost:8000/storage/delete}
@@ -26,41 +22,36 @@ services:
     depends_on:
       - redis
       - ollama
-    volumes:
-      - ./storage_profiles:/storage_profiles  # Mount the storage profiles to enable file uploads
-      - ./storage:/storage  # Mount the storage directory to enable file uploads
+    volumes: &appvolumes
       - .:/app  # Mount the text_extract_api directory to enable auto-reloading
 
   celery_worker:
-    build: text_extract_api
-    container_name: celery_worker
-    command: celery -A text_extract_api.tasks worker --loglevel=info --pool=solo
+    build:
+      context: . # Keep the build context as the root directory
+      dockerfile: dev.Dockerfile
+    entrypoint: /app/scripts/entrypoint.sh
     environment:
+      - APP_TYPE=celery
       - OLLAMA_HOST=${OLLAMA_HOST-http://ollama:11434}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL-redis://redis:6379/0}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND-redis://redis:6379/0}
-      - STORAGE_PROFILE_PATH=${STORAGE_PROFILE_PATH-/storage_profiles}  # Add the storage profile path
+      - STORAGE_PROFILE_PATH=${STORAGE_PROFILE_PATH-/app/storage_profiles}  # Add the storage profile path
       - LIST_FILES_URL=${LIST_FILES_URL-http://localhost:8000/storage/list}      
       - LOAD_FILE_URL=${LOAD_FILE_URL-http://localhost:8000/storage/load}
       - DELETE_FILE_URL=${DELETE_FILE_URL-http://localhost:8000/storage/delete}
       - LLAMA_VISION_PROMPT=${LLAMA_VISION_PROMPT-"You are OCR. Convert image to markdown."}      
     depends_on:
       - redis
-    volumes:
-      - ./storage_profiles:/storage_profiles  # Mount the storage profiles to enable file uploads
-      - ./storage:/storage  # Mount the storage directory to enable file uploads
-      - .:/app
+      - fastapi_app
+    volumes: *appvolumes
 
   redis:
     image: redis:7.2.4-alpine
-    container_name: redis
     ports:
-      - "6379:6379"
-
+      - "${REDIS_HOST_PORT:-6379}:6379"
 
   ollama:
     image: ollama/ollama # Use the official Ollama image
-    container_name: ollama
     pull_policy: always
     tty: true
     restart: always

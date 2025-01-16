@@ -6,13 +6,14 @@ import ollama
 import redis
 
 from text_extract_api.celery_app import app as celery_app
-from text_extract_api.extract.ocr_strategies.ocr_strategy import OCRStrategy
+from text_extract_api.extract.strategies.strategy import Strategy
 from text_extract_api.files.file_formats.file_format import FileFormat
 from text_extract_api.files.storage_manager import StorageManager
 
 # Connect to Redis
 redis_url = os.getenv('REDIS_CACHE_URL', 'redis://redis:6379/1')
 redis_client = redis.StrictRedis.from_url(redis_url)
+
 
 @celery_app.task(bind=True)
 def ocr_task(
@@ -32,8 +33,8 @@ def ocr_task(
     """
     start_time = time.time()
 
-    ocr_strategy = OCRStrategy.get_strategy(strategy_name)
-    ocr_strategy.set_update_state_callback(self.update_state)
+    strategy = Strategy.get_strategy(strategy_name)
+    strategy.set_update_state_callback(self.update_state)
 
     self.update_state(state='PROGRESS', status="File uploaded successfully",
                       meta={'progress': 10})  # Example progress update
@@ -47,11 +48,10 @@ def ocr_task(
 
     if extracted_text is None:
         print("Extracting text from PDF...")
-        elapsed_time = time.time() - start_time
         self.update_state(state='PROGRESS',
                           meta={'progress': 30, 'status': 'Extracting text from PDF', 'start_time': start_time,
                                 'elapsed_time': time.time() - start_time})  # Example progress update
-        extracted_text = ocr_strategy.extract_text(FileFormat.from_binary(binary_content))
+        extracted_text = strategy.extract_text(FileFormat.from_binary(binary_content))
     else:
         print("Using cached result...")
 

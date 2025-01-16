@@ -4,12 +4,12 @@ import time
 
 import ollama
 
-from text_extract_api.extract.ocr_strategies.ocr_strategy import OCRStrategy
+from text_extract_api.extract.strategies.strategy import Strategy
 from text_extract_api.files.file_formats.file_format import FileFormat
-from text_extract_api.files.file_formats.image_file_format import ImageFileFormat
+from text_extract_api.files.file_formats.image import ImageFileFormat
 
 
-class LlamaVisionOCRStrategy(OCRStrategy):
+class LlamaVisionStrategy(Strategy):
     """Llama 3.2 Vision OCR Strategy"""
 
     @classmethod
