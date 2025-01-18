@@ -8,7 +8,6 @@ text_extract_api/__pycache__/*
 storage/*
 client_secret*.json    
 .env.localhost
-.idea
 # Python good practice ignore
 *.egg-info/
 /build/
