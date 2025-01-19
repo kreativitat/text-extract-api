@@ -1,6 +1,8 @@
+import contextlib
 import os
 import tempfile
 import time
+from typing import Optional
 
 import ollama
 
@@ -27,43 +29,63 @@ class LlamaVisionStrategy(Strategy):
             )
 
         images = FileFormat.convert_to(file_format, ImageFileFormat)
-        extracted_text = ""
         start_time = time.time()
-        ocr_percent_done = 0
-        num_pages = len(images)
-        for i, image in enumerate(images):
+        total_pages = len(images)
 
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
-                temp_file.write(image.binary)
-                temp_filename = temp_file.name
+        extracted_texts = []
+        for i, image in enumerate(images, 1):
+            text = self.process_single_image(
+                image=image,
+                start_time=start_time,
+                page_num=i,
+                total_pages=total_pages
+            )
+            if text:
+                extracted_texts.append(text)
 
-            # Generate text using the Llama 3.2 Vision model
+        return "\n\n".join(extracted_texts)
+
+
+    @contextlib.contextmanager
+    def create_temp_image(self, image_binary: bytes) -> str:
+        """Context manager to handle temporary file creation and cleanup"""
+        temp_file = None
+        try:
+            temp_file = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+            temp_file.write(image_binary)
+            temp_file.close()
+            yield temp_file.name
+        finally:
+            if temp_file is not None:
+                try:
+                    os.unlink(temp_file.name)
+                except OSError:
+                    pass  # @todo send to logger after its implementation
+
+    def process_single_image(self, image: FileFormat, start_time: float,
+                             page_num: int, total_pages: int) -> Optional[str]:
+        """Process a single image and return extracted text"""
+        with self.create_temp_image(image.binary) as temp_filename:
             try:
                 response = ollama.chat("llama3.2-vision", [{
                     'role': 'user',
-                    'content': os.getenv('LLAMA_VISION_PROMPT', "You are OCR. Convert image to markdown."),
+                    'content': os.getenv('LLAMA_VISION_PROMPT', "You are OCR. Convert image to markdown."), # @todo don't get this directly from env
                     'images': [temp_filename]
                 }], stream=True)
-                os.remove(temp_filename)
-                num_chunk = 1
-                for chunk in response:
+
+                extracted_text = ""
+                for chunk_num, chunk in enumerate(response, 1):
                     meta = {
-                        'progress': str(30 + ocr_percent_done),
-                        'status': 'OCR Processing'
-                                  + '(page ' + str(i + 1) + ' of ' + str(num_pages) + ')'
-                                  + ' chunk no: ' + str(num_chunk),
+                        'progress': str(30 + int(20 / total_pages)),
+                        'status': (f'OCR Processing (page {page_num} of {total_pages}) '
+                                   f'chunk no: {chunk_num}'),
                         'start_time': start_time,
-                        'elapsed_time': time.time() - start_time}
+                        'elapsed_time': time.time() - start_time
+                    }
                     self.update_state_callback(state='PROGRESS', meta=meta)
-                    num_chunk += 1
                     extracted_text += chunk['message']['content']
 
-                ocr_percent_done += int(
-                    20 / num_pages)  # 20% of work is for OCR - just a stupid assumption from tasks.py
+                return extracted_text
             except ollama.ResponseError as e:
                 print('Error:', e.error)
-                raise Exception("Failed to generate text with Llama 3.2 Vision model")
-
-            print(response)
-
-        return extracted_text
+                raise Exception(f"Failed to process page {page_num} with Llama Vision: {str(e)}")
