@@ -178,15 +178,6 @@ class FileFormat:
         """
         return {}
 
-    def unify(self) -> Type["FileFormat"]:
-        """
-        Converts the file to a universal type for that format (e.g., JPEG from png, bmp, tiff, etc.).
-        Default implementation returns a new instance of the current format.
-
-        :return: Unified format as a new self instance.
-        """
-        return self
-
     @classmethod
     def default_iterator_file_format(cls) -> Type["FileFormat"]:
         if not cls.is_pageable():
