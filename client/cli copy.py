@@ -2,7 +2,6 @@ import argparse
 import requests
 import time
 import os
-import json
 
 def upload_file(file_path, ocr_cache, prompt, prompt_file=None, model='llama3.2-vision', strategy='marker'):
     ocr_url = os.getenv('OCR_URL', 'http://localhost:8000/ocr')
@@ -46,7 +45,7 @@ def get_result(task_id, print_progress=False):
                 if task_info.get('extracted_text'):
                     if not extracted_text_printed_once:
                         extracted_text_printed_once = True
-                        print("Extracted text:\n" + task_info.get('extracted_text'))
+                        print("Extracted text: " + task_info.get('extracted_text'))
                     else:
                         del task_info['extracted_text']
                 del task_info['start_time']
@@ -58,128 +57,6 @@ def get_result(task_id, print_progress=False):
                 print("OCR task failed.")
                 return None
         time.sleep(2)  # Wait for 2 seconds before checking again
-
-def parse_extracted_data(extracted_text):
-    """
-    Parses the LLM's output and constructs the JSON object.
-    """
-    data = {
-        "invoice": {
-            "numeroFatura": None,
-            "dataEmissao": None,
-            "dataVencimento": None,
-            "tipoDocumento": None,
-            "estadoDocumento": None,
-            "atcud": None,
-            "certificado": None,
-            "totalImpostos": None,
-            "totalComImpostos": None,
-            "identificacaoUnica": None,
-            "hash": None,
-            "qrCodeFields": {
-                "A_Issuers_Tax_ID": None,
-                "B_Buyers_Tax_ID": None,
-                "C_Buyers_Country": None,
-                "D_Document_Type": None,
-                "E_Document_Status": None,
-                "F_Document_Date": None,
-                "G_Document_Unique_ID": None,
-                "H_ATCUD": None,
-                "I1_Tax_Region": None,
-                "I2_Taxable_Amount_Exempt_VAT": None,
-                "I3_Taxable_Amount_Reduced_VAT": None,
-                "I4_VAT_Amount_Reduced_Rate": None,
-                "I5_Taxable_Amount_Intermediate_VAT": None,
-                "I6_VAT_Amount_Intermediate_Rate": None,
-                "I7_Taxable_Amount_Standard_VAT": None,
-                "I8_VAT_Amount_Standard_Rate": None,
-                "N_Total_Taxes": None,
-                "O_Total_With_Taxes": None,
-                "Q_Hash_Characters": None,
-                "R_Certificate_Number": None
-            }
-        },
-        "emitente": {
-            "taxID": None,
-            "nome": None,
-            "endereco": None,
-            "codigoPostal": None,
-            "pais": None,
-            "telefone": None,
-            "email": None
-        },
-        "cliente": {
-            "taxID": None,
-            "nome": None,
-            "endereco": None,
-            "codigoPostal": None,
-            "pais": None,
-            "telefone": None,
-            "email": None
-        },
-        "itens": [],
-        "subtotal": None
-    }
-
-    # Split the text into lines
-    lines = extracted_text.split('\n')
-    for line in lines:
-        line = line.strip()
-        # Parse invoice fields
-        if line.startswith('Invoice Number:'):
-            data['invoice']['numeroFatura'] = line.split(':', 1)[1].strip()
-        elif line.startswith('Issue Date:'):
-            data['invoice']['dataEmissao'] = line.split(':', 1)[1].strip()
-        elif line.startswith('Due Date:'):
-            data['invoice']['dataVencimento'] = line.split(':', 1)[1].strip()
-        # Continue parsing other invoice fields...
-
-        # Parse emitente fields
-        elif line.startswith('Issuer Tax ID:'):
-            data['emitente']['taxID'] = line.split(':', 1)[1].strip()
-        elif line.startswith('Issuer Name:'):
-            data['emitente']['nome'] = line.split(':', 1)[1].strip()
-        # Continue parsing other emitente fields...
-
-        # Parse cliente fields
-        elif line.startswith('Buyer Tax ID:'):
-            data['cliente']['taxID'] = line.split(':', 1)[1].strip()
-        elif line.startswith('Buyer Name:'):
-            data['cliente']['nome'] = line.split(':', 1)[1].strip()
-        # Continue parsing other cliente fields...
-
-        # Parse item lines
-        elif line.startswith('Item:'):
-            item_details = line.split(':', 1)[1].strip()
-            item_parts = item_details.split(',')
-            item = {
-                "codigo": None,
-                "descricao": None,
-                "quantidade": None,
-                "precoUnitario": None,
-                "descontoValor": None,
-                "descontoPercentagem": None,
-                "iva": None,
-                "total": None
-            }
-            for part in item_parts:
-                part = part.strip()
-                if part.startswith('Code'):
-                    item['codigo'] = part.split('Code', 1)[1].strip()
-                elif part.startswith('Description'):
-                    item['descricao'] = part.split('Description', 1)[1].strip()
-                elif part.startswith('Quantity'):
-                    item['quantidade'] = float(part.split('Quantity',1)[1].strip())
-                elif part.startswith('Unit Price'):
-                    item['precoUnitario'] = float(part.split('Unit Price',1)[1].strip())
-                # Continue parsing other item fields...
-            data['itens'].append(item)
-
-        # Parse subtotal
-        elif line.startswith('Subtotal:'):
-            data['subtotal'] = float(line.split(':', 1)[1].strip())
-
-    return data
 
 def clear_cache():
     clear_cache_url = os.getenv('CLEAR_CACHE_URL', 'http://localhost:8000/ocr/clear_cache')
@@ -244,22 +121,16 @@ def main():
             print("Error uploading file.")
             return
         if result.get('text'):
-            # LLM output received directly
-            extracted_text = result.get('text')
-            parsed_data = parse_extracted_data(extracted_text)
-            print(json.dumps(parsed_data, indent=2, ensure_ascii=False))
+            print(result.get('text'))
         elif result:
             print("File uploaded successfully. Task Id: " + result.get('task_id') + " Waiting for the result...")
             text_result = get_result(result.get('task_id'), args.print_progress)
             if text_result:
-                # Assuming text_result is the LLM's output
-                parsed_data = parse_extracted_data(text_result)
-                print(json.dumps(parsed_data, indent=2, ensure_ascii=False))
+                print(text_result)
     elif args.command == 'result':
         text_result = get_result(args.task_id, args.print_progress)
         if text_result:
-            parsed_data = parse_extracted_data(text_result)
-            print(json.dumps(parsed_data, indent=2, ensure_ascii=False))
+            print(text_result)
     elif args.command == 'clear_cache':
         clear_cache()
     elif args.command == 'llm_generate':

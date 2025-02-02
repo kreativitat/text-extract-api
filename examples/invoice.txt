@@ -1,0 +1,104 @@
+**Task Summary for LLM:**
+
+You are provided with an OCR-extracted text from an invoice. Your task is to extract specific information from this text and populate a predefined JSON structure accurately.
+
+---
+
+**Instructions:**
+
+1. **JSON Structure Integrity:**
+
+   - **Do not alter** the JSON structure in any way.
+   - **Do not add, remove, or rename** any fields.
+   - **Populate all fields** based on the instructions and data extracted from the OCR text.
+
+2. **Data Formatting:**
+
+   - **Numerical Values:** Use a dot `.` as the decimal separator. Exclude any currency symbols like `%` or `€`.
+   - **Dates:** Format all dates in `YYYY-MM-DD`.
+   - **Missing Values:** If any data is missing, represent it as `null`.
+
+3. **Output Requirements:**
+
+   - Provide **only** the completed JSON object as the output.
+   - **Do not include** any explanations, introductions, or additional text.
+
+4. **Field Mapping:**
+
+   - Extract issuer (`emitente`), buyer (`cliente`), and item (`itens`) details directly from the OCR text.
+   - Populate each field in the JSON structure with the corresponding data from the OCR text.
+
+---
+
+**JSON Structure:**
+
+```json
+{
+  "invoice": {
+    "numeroFatura": "string",              // Extract from OCR text
+    "dataEmissao": "YYYY-MM-DD",          // Extract from OCR text
+    "dataVencimento": "YYYY-MM-DD",       // Extract from OCR text (due date), if available
+    "tipoDocumento": "string",             // Extract from OCR text
+    "estadoDocumento": "string",           // Extract from OCR text
+    "atcud": "string",                     // Extract from OCR text
+    "certificado": "string",               // Extract from OCR text
+    "totalImpostos": number,               // Extract from OCR text
+    "totalComImpostos": number,            // Extract from OCR text
+    "identificacaoUnica": "string",        // Extract from OCR text
+    "hash": "string",                      // Extract from OCR text
+    "qrCodeFields": {
+      "A_Issuers_Tax_ID": "string",                            // Extract from OCR text
+      "B_Buyers_Tax_ID": "string",                             // Extract from OCR text
+      "C_Buyers_Country": "string",                            // Extract from OCR text
+      "D_Document_Type": "string",                             // Extract from OCR text
+      "E_Document_Status": "string",                           // Extract from OCR text
+      "F_Document_Date": "YYYY-MM-DD",                         // Extract from OCR text
+      "G_Document_Unique_ID": "string",                        // Extract from OCR text
+      "H_ATCUD": "string",                                     // Extract from OCR text
+      "I1_Tax_Region": "string",                               // Extract from OCR text
+      "I2_Taxable_Amount_Exempt_VAT": number,                  // Extract from OCR text
+      "I3_Taxable_Amount_Reduced_VAT": number,                 // Extract from OCR text
+      "I4_VAT_Amount_Reduced_Rate": number,                    // Extract from OCR text
+      "I5_Taxable_Amount_Intermediate_VAT": number,            // Extract from OCR text
+      "I6_VAT_Amount_Intermediate_Rate": number,               // Extract from OCR text
+      "I7_Taxable_Amount_Standard_VAT": number,                // Extract from OCR text
+      "I8_VAT_Amount_Standard_Rate": number,                   // Extract from OCR text
+      "N_Total_Taxes": number,                                 // Extract from OCR text
+      "O_Total_With_Taxes": number,                            // Extract from OCR text
+      "Q_Hash_Characters": "string",                           // Extract from OCR text
+      "R_Certificate_Number": "string"                         // Extract from OCR text
+    }
+  },
+  "emitente": {
+    "taxID": "string",                      // Extract from OCR text
+    "nome": "string",                       // Extract from OCR text
+    "endereco": "string",                   // Extract from OCR text
+    "codigoPostal": "string",               // Extract from OCR text
+    "pais": "string",                       // Extract from OCR text or assumed
+    "telefone": "string",                   // Extract from OCR text
+    "email": "string"                       // Extract from OCR text
+  },
+  "cliente": {
+    "taxID": "string",                      // Extract from OCR text
+    "nome": "string",                       // Extract from OCR text
+    "endereco": "string",                   // Extract from OCR text
+    "codigoPostal": "string",               // Extract from OCR text
+    "pais": "string",                       // Extract from OCR text or assumed
+    "telefone": "string",                   // Extract from OCR text
+    "email": "string"                       // Extract from OCR text
+  },
+  "itens": [
+    {
+      "codigo": "string",                   // Extract from OCR text
+      "descricao": "string",                // Extract from OCR text
+      "quantidade": number,                 // Extract from OCR text
+      "precoUnitario": number,              // Extract from OCR text
+      "descontoValor": number,              // Extract from OCR text (if discount is a value)
+      "descontoPercentagem": number,        // Extract from OCR text (if discount is a percentage)
+      "iva": number,                        // Extract from OCR text (as a percentage)
+      "total": number                       // Extract from OCR text
+    }
+    // Repeat for each item
+  ],
+  "subtotal": number                        // Sum of item totals
+}
