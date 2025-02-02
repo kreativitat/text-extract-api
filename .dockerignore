@@ -1,0 +1,30 @@
+# Virtual environments
+.venv
+
+# Documentation and examples
+docs/
+examples/
+screenshots/
+
+# Scripts and local storage
+scripts/
+storage/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Editor/IDE settings
+.idea/
+.vscode/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Version control
+.git/
+.gitignore

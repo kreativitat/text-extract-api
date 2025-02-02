@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "text_extract_api"
+version = "0.2.0"
+description = "Images and documents (PDF, Word, PPTX ...) extraction and parse API using state of the art modern OCRs + Ollama supported models. Anonymize documents. Remove PII. Convert any document or picture to structured JSON or Markdown"
+authors = [
+]
+license = { text = "MIT License" }
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "fastapi",
+    "easyocr",
+    "celery",
+    "redis",
+    "opencv-python-headless",
+    "pdf2image",
+    "ollama",
+    "uvicorn[standard]",
+    "requests",
+    "python-multipart",
+    "pdftext",
+    "argparse",
+    "google-api-python-client",
+    "google-auth-httplib2",
+    "google-auth-oauthlib",
+    "transformers",
+    "boto3",
+    "Pillow",
+    "python-magic==0.4.27",
+    "maker",
+    "setuptools",
+    "PyYAML",
+    "botocore",
+    "protobuf",
+    "opencv-python",
+    "numpy",
+    "pydantic",
+    "python-dotenv",
+]
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "isort",
+    "flake8",
+]
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.pytest]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.flake8]
+max-line-length = 88
+exclude = ["venv", "__pycache__", ".git", ".mypy_cache"]
+
+[tool.setuptools.packages.find]
+where = ["text_extract_api"]
+include = ["text_extract_api.*"]

@@ -1,6 +1,15 @@
-app/__pycache__/*
+text_extract_api/__pycache__/*
 .env
 .env.local
 *.pyc
 .venv
+.dvenv
 .DS_Store
+storage/*
+client_secret*.json    
+.env.localhost
+.idea
+# Python good practice ignore
+*.egg-info/
+/build/
+.pyproject.hash
